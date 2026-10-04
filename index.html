@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Countertop: test MCP servers by voice, on a smart display</title>
+<meta name="description" content="Paste any Streamable HTTP MCP server, talk to it the way a smart display assistant would, and see its MCP App views on an Echo Show-sized screen.">
+<meta name="theme-color" content="#ebe8e1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='6' width='26' height='17' rx='3' fill='%2316181b'/%3E%3Crect x='6' y='9' width='20' height='11' rx='1' fill='%23ff6a3d'/%3E%3Crect x='9' y='24' width='14' height='3' rx='1.5' fill='%2316181b'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true"></span>Countertop</div>
+  <p class="tagline">Test an MCP server the way a smart display would use it: by voice, with its views on screen.</p>
+  <a class="gh" href="https://github.com/RohanGlitched/countertop">Source</a>
+</header>
+
+<main class="layout">
+  <section class="bench" aria-label="Simulated smart display">
+    <div class="device" id="device" data-phase="idle">
+      <span class="cam" aria-hidden="true"></span>
+      <div class="screen">
+        <div class="view" id="view"></div>
+        <div class="empty" id="empty">
+          <p class="big">Connect a server, then ask it something.</p>
+          <p>Tools that ship an MCP App view draw it here, full screen, the way a device would.</p>
+        </div>
+        <p class="caption" id="caption" hidden></p>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+    </div>
+    <div class="controls">
+      <button type="button" class="talk" id="talk" disabled>Talk</button>
+      <form class="say" id="say">
+        <label class="sr" for="utter">What you'd say</label>
+        <input id="utter" autocomplete="off" placeholder="Type what you'd say" disabled>
+        <button type="submit" id="send" disabled>Say it</button>
+      </form>
+      <label class="voice"><input type="checkbox" id="voice" checked> Speak replies</label>
+    </div>
+    <p class="status" id="status" role="status"></p>
+  </section>
+
+  <aside class="panel">
+    <section>
+      <h2>Server</h2>
+      <form class="connect" id="connect">
+        <label for="url">Streamable HTTP endpoint</label>
+        <div class="row">
+          <input id="url" type="url" required placeholder="https://example.com/mcp">
+          <button type="submit">Connect</button>
+        </div>
+        <p class="hint">Try <button type="button" class="link" data-url="https://lowtide-energy.vercel.app/api/mcp">Lowtide</button>, an energy-price server with an MCP App view. Ask: "When is electricity cheapest in SE1 7PB?"</p>
+      </form>
+      <p class="server" id="server"></p>
+    </section>
+
+    <section>
+      <h2>Tools <span class="count" id="count"></span></h2>
+      <ol class="tools" id="tools"><li class="none">No server yet.</li></ol>
+    </section>
+
+    <section>
+      <h2>Conversation</h2>
+      <ol class="log" id="log"><li class="none">Each request, model reply and tool call appears here.</li></ol>
+      <p class="model" id="model"></p>
+    </section>
+  </aside>
+</main>
+
+<dialog id="argsDialog">
+  <form method="dialog" id="argsForm">
+    <h3 id="argsTitle">Run tool</h3>
+    <p id="argsDesc" class="hint"></p>
+    <label for="args">Arguments (JSON)</label>
+    <textarea id="args" rows="8" spellcheck="false"></textarea>
+    <p class="err" id="argsErr"></p>
+    <div class="actions">
+      <button value="cancel" type="submit" class="quiet">Cancel</button>
+      <button value="run" type="submit" id="argsRun">Run on the screen</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

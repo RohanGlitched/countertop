@@ -1,0 +1,25 @@
+{
+  "name": "countertop",
+  "version": "1.0.0",
+  "description": "A voice and screen test bench for MCP servers: talk to any Streamable HTTP server the way a smart display assistant would, and see its MCP App views on an Echo Show-sized screen.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "^2.3.0",
+    "@modelcontextprotocol/ext-apps": "^2.0.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/server": "^2.3.0",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3"
+  }
+}
