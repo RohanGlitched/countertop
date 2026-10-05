@@ -95,15 +95,23 @@ export async function mountView(
   });
   const ready = new Promise<void>((resolve) => (bridge.oninitialized = () => resolve()));
   bridge.onopenlink = async ({ url }) => {
-    window.open(url, "_blank", "noopener,noreferrer");
+    // A view may open web pages only, never javascript: or other schemes.
+    try {
+      if (/^https?:$/.test(new URL(url).protocol)) window.open(url, "_blank", "noopener,noreferrer");
+    } catch {}
     return {};
   };
   bridge.onsizechange = () => {};
   await bridge.connect(new PostMessageTransport(iframe.contentWindow!, iframe.contentWindow!));
   iframe.srcdoc = html;
-  await Promise.race([ready, new Promise((r) => setTimeout(r, 4000))]);
-  bridge.sendToolInput({ arguments: args });
-  bridge.sendToolResult(result);
+  const send = () => {
+    bridge.sendToolInput({ arguments: args });
+    bridge.sendToolResult(result);
+  };
+  const started = await Promise.race([ready.then(() => true), new Promise<boolean>((r) => setTimeout(() => r(false), 4000))]);
+  send();
+  // A slow view that finishes starting after the timeout still gets its data.
+  if (!started) ready.then(send).catch(() => {});
   const ro = new ResizeObserver(() => bridge.sendHostContextChange({ containerDimensions: { width: host.clientWidth, height: host.clientHeight } }));
   ro.observe(host);
   return {

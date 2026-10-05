@@ -23,7 +23,7 @@ Countertop is a test bench for that, built while making [Lowtide](https://github
 - **Voice in, voice out.** Push to talk with the Web Speech API (Chrome, Edge, Safari), or type. Replies are spoken with the browser's voices.
 - **A real model loop.** Each turn goes to Claude Haiku 4.5 on **Amazon Bedrock** (Converse API) with the server's tool list and instructions; Countertop runs the tool calls itself and loops until the model answers.
 - **MCP Apps on a device screen.** Tool views render in an opaque-origin sandboxed iframe through the official `AppBridge`, with `displayMode: "fullscreen"` and the screen's size in the host context, so your view can switch to its device layout.
-- **A tool console.** Run any tool by hand with JSON arguments (pre-filled from the input schema) and see its view, with no model at all.
+- **A tool console.** Run any tool by hand with JSON arguments (started from the schema's defaults, enums and "e.g." hints) and see its view, with no model at all.
 - **The Alexa light bar** along the bottom of the screen shows listening, thinking and speaking.
 
 ![Running a tool by hand](docs/countertop-tool.png)
@@ -52,11 +52,22 @@ Open `/?server=<url>` to connect straight to a server.
 - Return a short spoken sentence as the first text content of each tool result; put anything the model needs but shouldn't say in a later line.
 - In your MCP App view, read `hostContext.displayMode` and `containerDimensions`: in `fullscreen`, fit the screen without scrolling.
 
+## Security and privacy
+
+- Countertop runs in your browser and talks to the server you give it; nothing is stored except the last server URL in `localStorage`.
+- The model function answers requests whose Origin is its own page, caps calls per visitor (30 per 10 minutes) and per day (300 by default), both per server instance. That stops casual reuse of a public deployment's Bedrock key; it is not authentication, so a deployment with real money behind it should add its own.
+- A server's `instructions` are passed to the model inside the system prompt, fenced as untrusted text, which is what a real host does. A server can still steer the model, so Countertop is a test bench for servers you are building or trust. Tools that aren't marked read-only ask you in the browser before they run, whatever the model or the server say.
+- Views run in a sandboxed iframe with an opaque origin and scripts only; they cannot read the page or your other tabs.
+
 ## How it's built
 
 - `src/host.ts`: MCP client (`@modelcontextprotocol/client` v2) and the MCP Apps host (`@modelcontextprotocol/ext-apps/app-bridge`).
 - `src/main.ts`: the conversation loop, the tool console and the device UI.
 - `src/voice.ts`: speech recognition and synthesis.
 - `api/turn.mjs`: one Bedrock Converse turn with spend guards.
+
+## Contributing
+
+Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks and a list of good first contributions.
 
 MIT licensed.

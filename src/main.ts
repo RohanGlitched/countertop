@@ -38,6 +38,14 @@ let busy = false;
 let modelReady = false;
 const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+let captionTimer = 0;
+const MODEL_NAMES: [RegExp, string][] = [
+  [/claude-haiku-4-5/, "Claude Haiku 4.5"],
+  [/claude-3-5-haiku/, "Claude 3.5 Haiku"],
+  [/nova-lite/, "Amazon Nova Lite"],
+];
+const modelName = (id: string) => MODEL_NAMES.find(([re]) => re.test(id))?.[1] ?? id;
+
 function setPhase(p: "idle" | "listening" | "thinking" | "speaking") {
   device.dataset.phase = p;
   busy = p !== "idle";
@@ -63,6 +71,7 @@ function log(who: "you" | "assistant" | "tool" | "note", text: string) {
     li.append(code);
   } else li.textContent = text;
   logEl.append(li);
+  while (logEl.children.length > 200) logEl.firstElementChild?.remove();
   logEl.scrollTop = logEl.scrollHeight; // scroll the log, not the page
 }
 
@@ -113,18 +122,31 @@ async function open(url: string) {
     serverEl.textContent = `${conn.name}: ${conn.tools.length} tools${conn.instructions ? ", with instructions for the model" : ""}.`;
     renderTools();
     status(modelReady ? "Connected. Talk, type, or run a tool directly." : "Connected. Run a tool from the list (no model is configured on this deployment).");
+    const withViews = conn.tools.filter((t) => hasView(conn!, t.name)).length;
+    empty.hidden = false;
+    empty.querySelector(".big")!.textContent = `Connected to ${conn.name}.`;
+    empty.querySelector("p:not(.big)")!.textContent = modelReady
+      ? `${withViews ? `${withViews} of its ${conn.tools.length} tools draw a view here. ` : ""}Ask it something, or press Run on a tool.`
+      : `${withViews ? `${withViews} of its ${conn.tools.length} tools draw a view here. ` : ""}Press Run on a tool to see it on the screen.`;
     try {
-      localStorage.setItem("countertop.url", url);
+      if (!fromQuery) localStorage.setItem("countertop.url", url);
     } catch {}
     const u = new URL(location.href);
     u.searchParams.set("server", url);
     history.replaceState(null, "", u);
   } catch (err) {
     conn = null;
-    status(`Couldn't connect: ${err instanceof Error ? err.message : err}. Check the URL is a Streamable HTTP endpoint that allows this origin (CORS).`, true);
+    const why = err instanceof Error ? err.message : String(err);
+    status(
+      /failed to fetch|networkerror|load failed/i.test(why)
+        ? "Couldn't reach that address from the browser. Check it's a Streamable HTTP MCP endpoint (usually ending in /mcp) and that the server allows this origin (CORS)."
+        : `Couldn't connect: ${why}`,
+      true,
+    );
   }
   setPhase("idle");
 }
+let fromQuery = false;
 
 function renderTools() {
   toolsEl.replaceChildren();
@@ -157,13 +179,21 @@ function renderTools() {
 
 /* ---------- running a tool by hand ---------- */
 
+/** A first guess at arguments: defaults, enums, examples, and the "e.g. X" a description offers. */
 function example(schema: Record<string, unknown> | undefined): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  const props = (schema?.properties ?? {}) as Record<string, { type?: string; enum?: unknown[]; default?: unknown }>;
+  type Prop = { type?: string; enum?: unknown[]; default?: unknown; examples?: unknown[]; description?: string; minimum?: number };
+  const props = (schema?.properties ?? {}) as Record<string, Prop>;
   const required = new Set((schema?.required as string[]) ?? []);
+  const hinted = (v: Prop) => {
+    const m = v.description?.match(/\be\.g\.?,?\s+['"“]?([^'"”,;.)]+)/i);
+    return m?.[1]?.trim();
+  };
   for (const [k, v] of Object.entries(props)) {
-    if (!required.has(k)) continue;
-    out[k] = v.default ?? v.enum?.[0] ?? (v.type === "number" || v.type === "integer" ? 0 : v.type === "boolean" ? false : "");
+    const hint = hinted(v);
+    const value = v.default ?? v.examples?.[0] ?? v.enum?.[0] ?? (v.type === "number" || v.type === "integer" ? (v.minimum ?? 1) : v.type === "boolean" ? false : hint ?? "");
+    // Required fields always appear; optional ones appear when the schema gives something useful to start from.
+    if (required.has(k) || (hint !== undefined && v.type !== "number" && v.type !== "integer") || v.enum || v.default !== undefined) out[k] = value;
   }
   return out;
 }
@@ -179,25 +209,43 @@ function openArgs(name: string) {
   dialog.showModal();
 }
 
-dialog.addEventListener("close", async () => {
-  if (dialog.returnValue !== "run" || !conn) return;
-  const name = dialog.dataset.tool!;
-  let args: Record<string, unknown>;
+/** Bad JSON keeps the dialog open with the message next to the text, instead of throwing the typing away. */
+$<HTMLButtonElement>("argsRun").addEventListener("click", (e) => {
+  const err = $<HTMLParagraphElement>("argsErr");
   try {
-    args = JSON.parse($<HTMLTextAreaElement>("args").value || "{}");
-  } catch {
-    status("Those arguments aren't valid JSON.", true);
-    return;
+    const v = JSON.parse($<HTMLTextAreaElement>("args").value || "{}");
+    if (!v || typeof v !== "object" || Array.isArray(v)) throw new Error("Arguments must be a JSON object, like {\"place\": \"SE1 7PB\"}.");
+    err.textContent = "";
+  } catch (x) {
+    e.preventDefault();
+    err.textContent = x instanceof SyntaxError ? `That isn't valid JSON: ${x.message}` : x instanceof Error ? x.message : String(x);
   }
+});
+
+dialog.addEventListener("close", async () => {
+  if (dialog.returnValue !== "run" || !conn || busy) return;
+  const name = dialog.dataset.tool!;
+  const args = JSON.parse($<HTMLTextAreaElement>("args").value || "{}") as Record<string, unknown>;
   log("tool", `${name}(${JSON.stringify(args)})`);
   setPhase("thinking");
-  const r = await callTool(conn, name, args);
-  const first = textOf(r)[0]?.text ?? (r.isError ? "The tool returned an error." : "Done.");
-  if (r.isError) status(first, true);
-  else await show(name, args, r);
-  log("note", first);
-  setPhase("idle");
+  try {
+    const r = await callTool(conn, name, args);
+    const first = textOf(r)[0]?.text ?? (r.isError ? "The tool returned an error." : "Done.");
+    if (r.isError) status(first, true);
+    else await show(name, args, r);
+    log("note", first);
+  } finally {
+    setPhase("idle");
+  }
 });
+
+/** The host, not the prompt, is the last line of defence: a tool that may change something asks the person first. */
+function okToRun(name: string): boolean {
+  const t = conn?.tools.find((x) => x.name === name);
+  const ann = (t?.annotations ?? {}) as { readOnlyHint?: boolean };
+  if (ann.readOnlyHint === true) return true;
+  return confirm(`The model wants to run "${name}", which may change something on the server. Run it?`);
+}
 
 /* ---------- the conversation ---------- */
 
@@ -215,9 +263,12 @@ async function ask(said: string) {
   log("you", said);
   showCaption(said, "you");
   setPhase("thinking");
+  clearTimeout(captionTimer);
+  const before = messages;
   let history: Message[] = [...messages, { role: "user" as const, content: [{ text: said }] }].slice(-30);
   while (history.length > 1 && !(history[0].role === "user" && history[0].content.some((b) => "text" in b))) history = history.slice(1);
   messages = history;
+  let finished = false;
   try {
     for (let step = 0; step < 6; step++) {
       const r = await fetch("/api/turn", {
@@ -234,7 +285,9 @@ async function ask(said: string) {
           if (!("toolUse" in b)) continue;
           const { toolUseId, name, input } = b.toolUse;
           log("tool", `${name}(${JSON.stringify(input)})`);
-          const res = await callTool(conn, name, input);
+          const res = okToRun(name)
+            ? await callTool(conn, name, input)
+            : ({ isError: true, content: [{ type: "text" as const, text: "The person declined to run this tool." }] } as CallToolResult);
           const texts = textOf(res);
           results.push({ toolResult: { toolUseId, content: texts.length ? texts : [{ text: "Done." }], status: res.isError ? "error" : "success" } });
           if (!res.isError) await show(name, input, res);
@@ -250,14 +303,24 @@ async function ask(said: string) {
       log("assistant", reply);
       showCaption(reply, "assistant");
       setPhase("speaking");
+      finished = true;
       await speak(reply, "en-GB", !voiceBox.checked);
       break;
     }
+    if (!finished) {
+      // Six steps without an answer: close the turn so the next one isn't rejected by the model.
+      messages = [...messages, { role: "assistant", content: [{ text: "I couldn't finish that one." }] }];
+      log("assistant", "I couldn't finish that one.");
+      showCaption("I couldn't finish that one.", "assistant");
+    }
   } catch (e) {
+    // A failed turn leaves no half-finished tool call behind, and no stale question on the screen.
+    messages = before;
+    caption.hidden = true;
     status(e instanceof Error ? e.message : String(e), true);
   } finally {
     setPhase("idle");
-    setTimeout(() => device.dataset.phase === "idle" && (caption.hidden = true), 6000);
+    captionTimer = window.setTimeout(() => device.dataset.phase === "idle" && (caption.hidden = true), 7000);
   }
 }
 
@@ -298,7 +361,7 @@ talkBtn.addEventListener("click", async () => {
     const r = await fetch("/api/turn");
     const j = await r.json();
     modelReady = Boolean(j.model);
-    modelEl.textContent = modelReady ? `Model: ${j.model} on Amazon Bedrock.` : "No model on this deployment: run tools from the list.";
+    modelEl.textContent = modelReady ? `Model: ${modelName(j.model)} on Amazon Bedrock.` : "No model on this deployment: run tools from the list.";
   } catch {
     modelEl.textContent = "No model on this deployment: run tools from the list.";
   }
@@ -307,6 +370,8 @@ talkBtn.addEventListener("click", async () => {
   try {
     saved = localStorage.getItem("countertop.url");
   } catch {}
+  // A server named in the link is connected to but not remembered: the next visit starts from the last one you chose.
+  fromQuery = Boolean(fromUrl);
   const start = fromUrl || saved;
   if (start) {
     urlInput.value = start;

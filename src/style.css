@@ -43,6 +43,8 @@ body {
   padding: 22px clamp(16px, 3vw, 40px);
 }
 .brand {
+  margin: 0;
+  font-size: 20px;
   display: flex;
   align-items: center;
   gap: 10px;
