@@ -360,8 +360,12 @@ talkBtn.addEventListener("click", async () => {
   try {
     const r = await fetch("/api/turn");
     const j = await r.json();
-    modelReady = Boolean(j.model);
-    modelEl.textContent = modelReady ? `Model: ${modelName(j.model)} on Amazon Bedrock.` : "No model on this deployment: run tools from the list.";
+    modelReady = Boolean(j.model) && j.reachable !== false;
+    modelEl.textContent = modelReady
+      ? `Model: ${modelName(j.model)} on Amazon Bedrock.`
+      : j.model
+        ? `${modelName(j.model)} on Amazon Bedrock isn't reachable right now. The tool console still works.`
+        : "No model on this deployment: run tools from the list.";
   } catch {
     modelEl.textContent = "No model on this deployment: run tools from the list.";
   }

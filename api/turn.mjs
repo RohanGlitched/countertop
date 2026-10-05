@@ -62,8 +62,32 @@ function sameOrigin(req) {
   }
 }
 
+let probe = null; // { at, ok }
+
+/** One tiny call, remembered for five minutes, so the page can say whether the model is really reachable. */
+async function reachable() {
+  if (!process.env.AWS_BEARER_TOKEN_BEDROCK) return false;
+  if (probe && Date.now() - probe.at < 5 * 60_000) return probe.ok;
+  try {
+    const r = await fetch(`https://bedrock-runtime.${REGION}.amazonaws.com/model/${encodeURIComponent(MODEL)}/converse`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${process.env.AWS_BEARER_TOKEN_BEDROCK}`, "content-type": "application/json" },
+      body: JSON.stringify({ messages: [{ role: "user", content: [{ text: "Reply with the single word ok." }] }], inferenceConfig: { maxTokens: 5 } }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    probe = { at: Date.now(), ok: r.ok };
+  } catch {
+    probe = { at: Date.now(), ok: false };
+  }
+  return probe.ok;
+}
+
 export default async function handler(req, res) {
-  if (req.method === "GET") return res.status(200).json({ model: process.env.AWS_BEARER_TOKEN_BEDROCK ? MODEL : null });
+  if (req.method === "GET") {
+    const ok = await reachable();
+    res.setHeader("cache-control", "no-store");
+    return res.status(200).json({ model: process.env.AWS_BEARER_TOKEN_BEDROCK ? MODEL : null, reachable: ok });
+  }
   if (req.method !== "POST") return res.status(405).end();
   if (!sameOrigin(req)) return res.status(403).json({ error: "This endpoint serves this Countertop deployment only. Deploy your own copy with your own Bedrock key." });
   if (!process.env.AWS_BEARER_TOKEN_BEDROCK) return res.status(503).json({ error: "No model is configured here. Use the tool console." });
