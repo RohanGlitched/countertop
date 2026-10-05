@@ -1,10 +1,23 @@
-# Countertop
+<div align="center">
+
+<img src="docs/cover.png" alt="Countertop: test an MCP server the way a smart display would use it. Lowtide's plan_appliance view on the device screen." width="100%">
+
+<br>
+
+[![Live](https://img.shields.io/badge/live-countertop--mcp.vercel.app-ff5a1f)](https://countertop-mcp.vercel.app)
+[![MCP Apps](https://img.shields.io/badge/MCP-Apps%20host%20%C2%B7%20Streamable%20HTTP-16181b)](#how-its-built)
+[![Amazon Bedrock](https://img.shields.io/badge/Amazon%20Bedrock-Claude%20Haiku%204.5-16181b)](#run-it)
+[![License: MIT](https://img.shields.io/badge/license-MIT-5f646b)](LICENSE)
+
+**[Open Countertop](https://countertop-mcp.vercel.app)** · **[Try it with Lowtide](https://countertop-mcp.vercel.app/?server=https://lowtide-energy.vercel.app/api/mcp)** · **[Make your server Countertop-friendly](#making-your-server-countertop-friendly)** · **[Contributing](CONTRIBUTING.md)**
+
+</div>
+
+---
 
 **Test an MCP server the way a smart display would use it: by voice, with its views on screen.**
 
 Paste any remote MCP server (Streamable HTTP). Countertop connects from the browser, lists the tools, and lets you talk to the server the way Alexa+ on an Echo Show would: the model picks a tool, Countertop runs it over MCP, speaks the reply, and draws the tool's **MCP App view** full screen on a 16:10 device display.
-
-**Live:** https://countertop-mcp.vercel.app · try it with [Lowtide](https://countertop-mcp.vercel.app/?server=https://lowtide-energy.vercel.app/api/mcp)
 
 ![Countertop running Lowtide's plan_appliance through Claude Haiku on Amazon Bedrock](docs/countertop-model.png)
 
