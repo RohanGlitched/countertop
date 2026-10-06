@@ -6,7 +6,7 @@
 
 [![Live](https://img.shields.io/badge/live-countertop--mcp.vercel.app-ff5a1f)](https://countertop-mcp.vercel.app)
 [![MCP Apps](https://img.shields.io/badge/MCP-Apps%20host%20%C2%B7%20Streamable%20HTTP-16181b)](#how-its-built)
-[![Amazon Bedrock](https://img.shields.io/badge/Amazon%20Bedrock-Claude%20Haiku%204.5-16181b)](#run-it)
+[![Amazon Bedrock](https://img.shields.io/badge/Amazon%20Bedrock-Amazon%20Nova%20Micro-16181b)](#run-it)
 [![License: MIT](https://img.shields.io/badge/license-MIT-5f646b)](LICENSE)
 
 **[Open Countertop](https://countertop-mcp.vercel.app)** · **[Try it with Lowtide](https://countertop-mcp.vercel.app/?server=https://lowtide-energy.vercel.app/api/mcp)** · **[Make your server Countertop-friendly](#making-your-server-countertop-friendly)** · **[Contributing](CONTRIBUTING.md)**
@@ -19,7 +19,7 @@
 
 Paste any remote MCP server (Streamable HTTP). Countertop connects from the browser, lists the tools, and lets you talk to the server the way Alexa+ on an Echo Show would: the model picks a tool, Countertop runs it over MCP, speaks the reply, and draws the tool's **MCP App view** full screen on a 16:10 device display.
 
-![Countertop running Lowtide's plan_appliance through Claude Haiku on Amazon Bedrock](docs/countertop-model.png)
+![Countertop running Lowtide's plan_appliance through a model on Amazon Bedrock](docs/countertop-model.png)
 
 ## Why
 
@@ -34,7 +34,7 @@ Countertop is a test bench for that, built while making [Lowtide](https://github
 
 - **Connects to any Streamable HTTP MCP server** from the browser (the server must allow CORS). Reads its tools, its `ui://` views and its instructions.
 - **Voice in, voice out.** Push to talk with the Web Speech API (Chrome, Edge, Safari), or type. Replies are spoken with the browser's voices.
-- **A real model loop.** Each turn goes to Claude Haiku 4.5 on **Amazon Bedrock** (Converse API) with the server's tool list and instructions; Countertop runs the tool calls itself and loops until the model answers.
+- **A real model loop.** Each turn goes to Amazon Nova Micro on **Amazon Bedrock** (Converse API) with the server's tool list and instructions; Countertop runs the tool calls itself and loops until the model answers.
 - **MCP Apps on a device screen.** Tool views render in an opaque-origin sandboxed iframe through the official `AppBridge`, with `displayMode: "fullscreen"` and the screen's size in the host context, so your view can switch to its device layout.
 - **A tool console.** Run any tool by hand with JSON arguments (started from the schema's defaults, enums and "e.g." hints) and see its view, with no model at all.
 - **The Alexa light bar** along the bottom of the screen shows listening, thinking and speaking.
@@ -52,9 +52,10 @@ The model turn lives in [`api/turn.mjs`](api/turn.mjs), a Vercel function. Deplo
 
 | Variable | |
 |---|---|
-| `AWS_BEARER_TOKEN_BEDROCK` | A Bedrock API key (us-east-1 by default). Without it, Countertop runs as a tool console. |
-| `BEDROCK_MODEL` | Default `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
-| `BEDROCK_REGION` | Default `us-east-1` |
+| `BEDROCK_ACCESS_KEY_ID`, `BEDROCK_SECRET_ACCESS_KEY` | IAM credentials; requests are SigV4-signed. Give the user only `bedrock:InvokeModel` on the models you use. |
+| `AWS_BEARER_TOKEN_BEDROCK` | Or a Bedrock API key, if your AWS organisation allows them. Without either, Countertop runs as a tool console. |
+| `BEDROCK_MODEL` | Default: Amazon Nova Micro through the region's inference profile (`apac.amazon.nova-micro-v1:0` in Sydney) |
+| `BEDROCK_REGION` | Default `ap-southeast-2` |
 | `DAILY_MODEL_CAP` | Model calls per day (default 300), plus 30 per visitor per 10 minutes |
 
 Open `/?server=<url>` to connect straight to a server.
