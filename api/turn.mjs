@@ -4,9 +4,10 @@
 // API key), plus BEDROCK_REGION, BEDROCK_MODEL, DAILY_MODEL_CAP.
 import { sigv4Headers } from "./_sigv4.mjs";
 
-const REGION = process.env.BEDROCK_REGION || "us-east-1";
-// Amazon Nova Micro: the cheapest Bedrock model with tool use
-const MODEL = process.env.BEDROCK_MODEL || "us.amazon.nova-micro-v1:0";
+const REGION = process.env.BEDROCK_REGION || "ap-southeast-2";
+// Amazon Nova Micro, the cheapest Bedrock model with tool use, through the region's cross-region inference profile
+const GEO = REGION.startsWith("ap-") ? "apac" : REGION.startsWith("eu-") ? "eu" : "us";
+const MODEL = process.env.BEDROCK_MODEL || `${GEO}.amazon.nova-micro-v1:0`;
 const configured = () => Boolean((process.env.BEDROCK_ACCESS_KEY_ID && process.env.BEDROCK_SECRET_ACCESS_KEY) || process.env.AWS_BEARER_TOKEN_BEDROCK);
 
 function converse(payload, timeout) {
