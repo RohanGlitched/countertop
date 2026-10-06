@@ -42,6 +42,7 @@ let captionTimer = 0;
 const MODEL_NAMES: [RegExp, string][] = [
   [/claude-haiku-4-5/, "Claude Haiku 4.5"],
   [/claude-3-5-haiku/, "Claude 3.5 Haiku"],
+  [/nova-micro/, "Amazon Nova Micro"],
   [/nova-lite/, "Amazon Nova Lite"],
 ];
 const modelName = (id: string) => MODEL_NAMES.find(([re]) => re.test(id))?.[1] ?? id;

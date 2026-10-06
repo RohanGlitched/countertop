@@ -1,9 +1,29 @@
-// One model turn for Countertop, on Amazon Bedrock (Converse API with a Bedrock API key).
+// One model turn for Countertop, on Amazon Bedrock (Converse API).
 // The browser holds the conversation and runs the MCP tool calls itself; this only decides the next step.
-// Env: AWS_BEARER_TOKEN_BEDROCK (required), BEDROCK_REGION, BEDROCK_MODEL, DAILY_MODEL_CAP.
+// Env: BEDROCK_ACCESS_KEY_ID + BEDROCK_SECRET_ACCESS_KEY (signed requests) or AWS_BEARER_TOKEN_BEDROCK (a Bedrock
+// API key), plus BEDROCK_REGION, BEDROCK_MODEL, DAILY_MODEL_CAP.
+import { sigv4Headers } from "./_sigv4.mjs";
 
 const REGION = process.env.BEDROCK_REGION || "us-east-1";
-const MODEL = process.env.BEDROCK_MODEL || "us.anthropic.claude-haiku-4-5-20251001-v1:0";
+// Amazon Nova Micro: the cheapest Bedrock model with tool use
+const MODEL = process.env.BEDROCK_MODEL || "us.amazon.nova-micro-v1:0";
+const configured = () => Boolean((process.env.BEDROCK_ACCESS_KEY_ID && process.env.BEDROCK_SECRET_ACCESS_KEY) || process.env.AWS_BEARER_TOKEN_BEDROCK);
+
+function converse(payload, timeout) {
+  const url = `https://bedrock-runtime.${REGION}.amazonaws.com/model/${encodeURIComponent(MODEL)}/converse`;
+  const body = JSON.stringify(payload);
+  const id = process.env.BEDROCK_ACCESS_KEY_ID, secret = process.env.BEDROCK_SECRET_ACCESS_KEY;
+  const headers = id && secret ? sigv4Headers(url, body, REGION, id, secret) : { authorization: `Bearer ${process.env.AWS_BEARER_TOKEN_BEDROCK}`, "content-type": "application/json" };
+  return fetch(url, { method: "POST", headers, body, signal: AbortSignal.timeout(timeout) });
+}
+
+/** Nova wraps its reasoning in <thinking> tags; the conversation only shows the rest. */
+function spoken(message) {
+  const content = message.content
+    .map((b) => (typeof b.text === "string" ? { ...b, text: b.text.replace(/<thinking>[\s\S]*?(<\/thinking>|$)/g, "").trim() } : b))
+    .filter((b) => typeof b.text !== "string" || b.text.length > 0);
+  return { ...message, content: content.length ? content : [{ text: "Sorry, I didn't catch that. Could you say it again?" }] };
+}
 const CAP = Number(process.env.DAILY_MODEL_CAP || 300);
 const MAX_BYTES = 80_000;
 
@@ -66,15 +86,10 @@ let probe = null; // { at, ok }
 
 /** One tiny call, remembered for five minutes, so the page can say whether the model is really reachable. */
 async function reachable() {
-  if (!process.env.AWS_BEARER_TOKEN_BEDROCK) return false;
+  if (!configured()) return false;
   if (probe && Date.now() - probe.at < 5 * 60_000) return probe.ok;
   try {
-    const r = await fetch(`https://bedrock-runtime.${REGION}.amazonaws.com/model/${encodeURIComponent(MODEL)}/converse`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${process.env.AWS_BEARER_TOKEN_BEDROCK}`, "content-type": "application/json" },
-      body: JSON.stringify({ messages: [{ role: "user", content: [{ text: "Reply with the single word ok." }] }], inferenceConfig: { maxTokens: 5 } }),
-      signal: AbortSignal.timeout(10_000),
-    });
+    const r = await converse({ messages: [{ role: "user", content: [{ text: "Reply with the single word ok." }] }], inferenceConfig: { maxTokens: 5 } }, 10_000);
     probe = { at: Date.now(), ok: r.ok };
   } catch {
     probe = { at: Date.now(), ok: false };
@@ -86,11 +101,11 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     const ok = await reachable();
     res.setHeader("cache-control", "no-store");
-    return res.status(200).json({ model: process.env.AWS_BEARER_TOKEN_BEDROCK ? MODEL : null, reachable: ok });
+    return res.status(200).json({ model: configured() ? MODEL : null, reachable: ok });
   }
   if (req.method !== "POST") return res.status(405).end();
   if (!sameOrigin(req)) return res.status(403).json({ error: "This endpoint serves this Countertop deployment only. Deploy your own copy with your own Bedrock key." });
-  if (!process.env.AWS_BEARER_TOKEN_BEDROCK) return res.status(503).json({ error: "No model is configured here. Use the tool console." });
+  if (!configured()) return res.status(503).json({ error: "No model is configured here. Use the tool console." });
   const raw = typeof req.body === "string" ? req.body : JSON.stringify(req.body || {});
   if (raw.length > MAX_BYTES) return res.status(413).json({ error: "That conversation is too long. Start again." });
   let body;
@@ -109,21 +124,16 @@ export default async function handler(req, res) {
   }
   const tools = (Array.isArray(body.tools) ? body.tools.slice(0, 64) : []).filter((t) => t && typeof t.name === "string");
   const timeZone = zoneOr(String(body.timeZone || "UTC").slice(0, 40));
-  const r = await fetch(`https://bedrock-runtime.${REGION}.amazonaws.com/model/${encodeURIComponent(MODEL)}/converse`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${process.env.AWS_BEARER_TOKEN_BEDROCK}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      system: [{ text: system(String(body.serverName || "the server").slice(0, 80), body.instructions, timeZone) }],
-      messages,
-      ...(tools.length ? { toolConfig: { tools: tools.map((t) => ({ toolSpec: { name: t.name, description: t.description || t.name, inputSchema: { json: t.inputSchema || { type: "object" } } } })) } } : {}),
-      inferenceConfig: { maxTokens: 500, temperature: 0.3 },
-    }),
-    signal: AbortSignal.timeout(25_000),
-  }).catch((e) => ({ ok: false, status: 504, json: async () => ({ message: String(e) }) }));
+  const r = await converse({
+    system: [{ text: system(String(body.serverName || "the server").slice(0, 80), body.instructions, timeZone) }],
+    messages,
+    ...(tools.length ? { toolConfig: { tools: tools.map((t) => ({ toolSpec: { name: t.name, description: t.description || t.name, inputSchema: { json: t.inputSchema || { type: "object" } } } })) } } : {}),
+    inferenceConfig: { maxTokens: 500, temperature: 0.3 },
+  }, 25_000).catch((e) => ({ ok: false, status: 504, json: async () => ({ message: String(e) }) }));
   const out = await r.json().catch(() => ({}));
   if (!r.ok || !out.output?.message) {
     console.error("bedrock", r.status, (out.message || out.Message || JSON.stringify(out)).slice(0, 300));
     return res.status(502).json({ error: `The model didn't answer (Bedrock said ${r.status}). The tool console still works.` });
   }
-  return res.status(200).json({ message: out.output.message, stop: out.stopReason === "tool_use" ? "tool_use" : "end_turn" });
+  return res.status(200).json({ message: spoken(out.output.message), stop: out.stopReason === "tool_use" ? "tool_use" : "end_turn" });
 }
