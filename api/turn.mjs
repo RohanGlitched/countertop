@@ -98,8 +98,7 @@ async function reachable() {
   if (!configured()) return false;
   if (probe && Date.now() - probe.at < 5 * 60_000) return probe.ok;
   try {
-    const t0 = Date.now();
-  const r = await converse({ messages: [{ role: "user", content: [{ text: "Reply with the single word ok." }] }], inferenceConfig: { maxTokens: 5 } }, 10_000);
+    const r = await converse({ messages: [{ role: "user", content: [{ text: "Reply with the single word ok." }] }], inferenceConfig: { maxTokens: 5 } }, 10_000);
     probe = { at: Date.now(), ok: r.ok };
   } catch {
     probe = { at: Date.now(), ok: false };
@@ -134,6 +133,7 @@ export default async function handler(req, res) {
   }
   const tools = (Array.isArray(body.tools) ? body.tools.slice(0, 64) : []).filter((t) => t && typeof t.name === "string");
   const timeZone = zoneOr(String(body.timeZone || "UTC").slice(0, 40));
+  const t0 = Date.now();
   const r = await converse({
     system: [{ text: system(String(body.serverName || "the server").slice(0, 80), body.instructions, timeZone) }],
     messages,
