@@ -24,6 +24,12 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+# Windows consoles default to a legacy code page, and the smoke test prints arrows and other non-ASCII text:
+# without this, a failed print looked like a failed health check and the script retried for minutes.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 INFRA = Path(__file__).resolve().parent
 ROOT = INFRA.parent
 BUILD = ROOT / "build"

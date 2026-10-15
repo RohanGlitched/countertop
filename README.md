@@ -4,14 +4,13 @@
 
 <br>
 
-[![Live](https://img.shields.io/badge/live-countertop--mcp.vercel.app-ff5a1f)](https://countertop-mcp.vercel.app)
+[![Live on AWS](https://img.shields.io/badge/live%20on%20AWS-d124pgg01fg3le.cloudfront.net-ff5a1f)](https://d124pgg01fg3le.cloudfront.net)
 [![MCP Apps](https://img.shields.io/badge/MCP-Apps%20host%20%C2%B7%20Streamable%20HTTP-16181b)](#how-its-built)
 [![Amazon Bedrock](https://img.shields.io/badge/Amazon%20Bedrock-Amazon%20Nova%20Micro-16181b)](#run-it)
 [![CI](https://github.com/RohanGlitched/countertop/actions/workflows/ci.yml/badge.svg)](https://github.com/RohanGlitched/countertop/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-5f646b)](LICENSE)
 
-<!-- TODO(deploy): after infra/deploy.py, point the live links at the CloudFront URL -->
-**[Open Countertop](https://countertop-mcp.vercel.app)** · **[Try it with Lowtide](https://countertop-mcp.vercel.app/?server=https://lowtide-energy.vercel.app/api/mcp)** · **[Make your server Countertop-friendly](#making-your-server-countertop-friendly)** · **[Contributing](CONTRIBUTING.md)**
+**[Open Countertop](https://d124pgg01fg3le.cloudfront.net)** · **[Try it with Lowtide](https://d124pgg01fg3le.cloudfront.net/?server=https://d1soo7510nfzf4.cloudfront.net/api/mcp)** · **[Make your server Countertop-friendly](#making-your-server-countertop-friendly)** · **[Contributing](CONTRIBUTING.md)**
 
 </div>
 
@@ -52,7 +51,7 @@ npm run dev            # http://localhost:5173 (tool console works; the model ne
 
 The model turn lives in [`api/turn.mjs`](api/turn.mjs), a plain Node.js function that runs on AWS Lambda or Vercel.
 
-**On AWS** (one CloudFormation stack in your region, no static keys): the site goes to a private S3 bucket behind CloudFront (origin access control), and the model function to AWS Lambda (Node.js 22, arm64) behind a Function URL under `/api/*`, through [`infra/lambda.mjs`](infra/lambda.mjs). The function signs Bedrock requests with its own execution role, which may only call `bedrock:InvokeModel` on Nova Micro and Nova Lite.
+**On AWS** (one CloudFormation stack in your region, no static keys; the public copy runs this way at [d124pgg01fg3le.cloudfront.net](https://d124pgg01fg3le.cloudfront.net), in Sydney): the site goes to a private S3 bucket behind CloudFront (origin access control), and the model function to AWS Lambda (Node.js 22, arm64) behind a Function URL under `/api/*`, through [`infra/lambda.mjs`](infra/lambda.mjs). The function signs Bedrock requests with its own execution role, which may only call `bedrock:InvokeModel` on Nova Micro and Nova Lite.
 
 ```bash
 python infra/deploy.py --dry-run   # build, package, validate; no AWS calls
@@ -74,7 +73,7 @@ Open `/?server=<url>` to connect straight to a server.
 ### Tests
 
 ```bash
-npm test               # 12 tests, no network and no model
+npm test               # 16 tests, no network and no model
 ```
 
 | What is checked | Where |
@@ -84,6 +83,7 @@ npm test               # 12 tests, no network and no model
 | The confirm gate: only a tool annotated `readOnlyHint: true` runs without asking; a missing or non-boolean hint asks | [`test/core.test.ts`](test/core.test.ts) |
 | The real host code against an in-process stateless MCP server: tools, server name and instructions read, views detected, tool errors returned as results, and only POSTs reach the server | [`test/host.test.ts`](test/host.test.ts) |
 | The model function: Nova's `<thinking>` text removed, same-origin guard, server instructions fenced as untrusted and capped, no key means a plain tool console | [`test/turn.test.ts`](test/turn.test.ts) |
+| The AWS Lambda entry point: `GET /api/turn` reports the model, other paths 404, the same-origin guard reads CloudFront's `x-forwarded-host`, credentials come from the function's role with its session token (signed exactly as botocore signs) | [`test/lambda.test.ts`](test/lambda.test.ts) |
 
 CI runs the type check, the build and the tests on every push.
 

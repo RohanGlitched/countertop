@@ -2,8 +2,8 @@
 // Usage: node scripts/e2e.cjs [countertopUrl] [mcpUrl] [shotsDir]
 const path = require("path");
 const { chromium } = require(process.env.PLAYWRIGHT || "playwright");
-const BASE = process.argv[2] || "https://countertop-mcp.vercel.app";
-const MCP = process.argv[3] || "https://lowtide-energy.vercel.app/api/mcp";
+const BASE = process.argv[2] || "https://d124pgg01fg3le.cloudfront.net";
+const MCP = process.argv[3] || "https://d1soo7510nfzf4.cloudfront.net/api/mcp";
 const SHOTS = process.argv[4] || path.join(__dirname, "..", "docs");
 
 (async () => {
