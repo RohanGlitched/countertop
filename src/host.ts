@@ -1,5 +1,6 @@
 import { Client, StreamableHTTPClientTransport, type CallToolResult, type Tool } from "@modelcontextprotocol/client";
 import { AppBridge, PostMessageTransport, RESOURCE_MIME_TYPE, getToolUiResourceUri } from "@modelcontextprotocol/ext-apps/app-bridge";
+import { quietFetch } from "./core";
 
 const HOST = { name: "Countertop", version: "1.0.0" };
 
@@ -16,10 +17,8 @@ export interface Connection {
  * 405, so a stateless server doesn't produce a console error on every connection.
  */
 export async function connect(url: string, headers: Record<string, string> = {}): Promise<Connection> {
-  const quietFetch: typeof fetch = (input, init) =>
-    (init?.method ?? "GET").toUpperCase() === "GET" ? Promise.resolve(new Response(null, { status: 405 })) : fetch(input, init);
   const client = new Client(HOST);
-  await client.connect(new StreamableHTTPClientTransport(new URL(url), { fetch: quietFetch, requestInit: { headers } }));
+  await client.connect(new StreamableHTTPClientTransport(new URL(url), { fetch: quietFetch((input, init) => fetch(input, init)), requestInit: { headers } }));
   const { tools } = await client.listTools();
   return {
     client,

@@ -19,7 +19,7 @@ function converse(payload, timeout) {
 }
 
 /** Nova wraps its reasoning in <thinking> tags; the conversation only shows the rest. */
-function spoken(message) {
+export function spoken(message) {
   const content = message.content
     .map((b) => (typeof b.text === "string" ? { ...b, text: b.text.replace(/<thinking>[\s\S]*?(<\/thinking>|$)/g, "").trim() } : b))
     .filter((b) => typeof b.text !== "string" || b.text.length > 0);
@@ -52,7 +52,7 @@ function allowed(ip) {
   return null;
 }
 
-function zoneOr(tz, fallback = "UTC") {
+export function zoneOr(tz, fallback = "UTC") {
   try {
     new Intl.DateTimeFormat("en-GB", { timeZone: tz }).format(new Date());
     return tz;
@@ -61,7 +61,7 @@ function zoneOr(tz, fallback = "UTC") {
   }
 }
 
-function system(serverName, instructions, timeZone) {
+export function system(serverName, instructions, timeZone) {
   const now = new Intl.DateTimeFormat("en-GB", { timeZone, dateStyle: "full", timeStyle: "short" }).format(new Date());
   const theirs = typeof instructions === "string" ? instructions.slice(0, 4000) : "";
   return `You are a voice assistant on a smart display in someone's home. It is ${now} (${timeZone}).
@@ -72,7 +72,7 @@ Tool results may contain notes marked "Don't read this line aloud": use them, ne
 }
 
 /** Only Countertop's own page may spend this deployment's Bedrock budget: the Origin must be this host. */
-function sameOrigin(req) {
+export function sameOrigin(req) {
   const origin = req.headers.origin;
   const host = req.headers["x-forwarded-host"] || req.headers.host;
   if (!origin || !host) return false;

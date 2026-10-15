@@ -1,5 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/client";
 import { callTool, connect, hasView, mountView, type Connection, type MountedView } from "./host";
+import { modelName, needsConfirm, prefill } from "./core";
 import { canListen, listen, speak, stopSpeaking } from "./voice";
 
 type Block =
@@ -39,13 +40,6 @@ let modelReady = false;
 const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 let captionTimer = 0;
-const MODEL_NAMES: [RegExp, string][] = [
-  [/claude-haiku-4-5/, "Claude Haiku 4.5"],
-  [/claude-3-5-haiku/, "Claude 3.5 Haiku"],
-  [/nova-micro/, "Amazon Nova Micro"],
-  [/nova-lite/, "Amazon Nova Lite"],
-];
-const modelName = (id: string) => MODEL_NAMES.find(([re]) => re.test(id))?.[1] ?? id;
 
 function setPhase(p: "idle" | "listening" | "thinking" | "speaking") {
   device.dataset.phase = p;
@@ -180,31 +174,12 @@ function renderTools() {
 
 /* ---------- running a tool by hand ---------- */
 
-/** A first guess at arguments: defaults, enums, examples, and the "e.g. X" a description offers. */
-function example(schema: Record<string, unknown> | undefined): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  type Prop = { type?: string; enum?: unknown[]; default?: unknown; examples?: unknown[]; description?: string; minimum?: number };
-  const props = (schema?.properties ?? {}) as Record<string, Prop>;
-  const required = new Set((schema?.required as string[]) ?? []);
-  const hinted = (v: Prop) => {
-    const m = v.description?.match(/\be\.g\.?,?\s+['"“]?([^'"”,;.)]+)/i);
-    return m?.[1]?.trim();
-  };
-  for (const [k, v] of Object.entries(props)) {
-    const hint = hinted(v);
-    const value = v.default ?? v.examples?.[0] ?? v.enum?.[0] ?? (v.type === "number" || v.type === "integer" ? (v.minimum ?? 1) : v.type === "boolean" ? false : hint ?? "");
-    // Required fields always appear; optional ones appear when the schema gives something useful to start from.
-    if (required.has(k) || (hint !== undefined && v.type !== "number" && v.type !== "integer") || v.enum || v.default !== undefined) out[k] = value;
-  }
-  return out;
-}
-
 function openArgs(name: string) {
   const t = conn?.tools.find((x) => x.name === name);
   if (!t) return;
   $<HTMLHeadingElement>("argsTitle").textContent = name;
   $<HTMLParagraphElement>("argsDesc").textContent = t.description ?? "";
-  $<HTMLTextAreaElement>("args").value = JSON.stringify(example(t.inputSchema as Record<string, unknown>), null, 2);
+  $<HTMLTextAreaElement>("args").value = JSON.stringify(prefill(t.inputSchema as Record<string, unknown>), null, 2);
   $<HTMLParagraphElement>("argsErr").textContent = "";
   dialog.dataset.tool = name;
   dialog.showModal();
@@ -242,9 +217,7 @@ dialog.addEventListener("close", async () => {
 
 /** The host, not the prompt, is the last line of defence: a tool that may change something asks the person first. */
 function okToRun(name: string): boolean {
-  const t = conn?.tools.find((x) => x.name === name);
-  const ann = (t?.annotations ?? {}) as { readOnlyHint?: boolean };
-  if (ann.readOnlyHint === true) return true;
+  if (!needsConfirm(conn?.tools.find((x) => x.name === name))) return true;
   return confirm(`The model wants to run "${name}", which may change something on the server. Run it?`);
 }
 

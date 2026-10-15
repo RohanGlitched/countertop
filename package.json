@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "tsx --test test/*.test.ts"
   },
   "engines": {
     "node": ">=20"
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@modelcontextprotocol/server": "^2.3.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vite": "^6.4.3"
   }

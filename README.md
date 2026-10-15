@@ -7,6 +7,7 @@
 [![Live](https://img.shields.io/badge/live-countertop--mcp.vercel.app-ff5a1f)](https://countertop-mcp.vercel.app)
 [![MCP Apps](https://img.shields.io/badge/MCP-Apps%20host%20%C2%B7%20Streamable%20HTTP-16181b)](#how-its-built)
 [![Amazon Bedrock](https://img.shields.io/badge/Amazon%20Bedrock-Amazon%20Nova%20Micro-16181b)](#run-it)
+[![CI](https://github.com/RohanGlitched/countertop/actions/workflows/ci.yml/badge.svg)](https://github.com/RohanGlitched/countertop/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-5f646b)](LICENSE)
 
 **[Open Countertop](https://countertop-mcp.vercel.app)** · **[Try it with Lowtide](https://countertop-mcp.vercel.app/?server=https://lowtide-energy.vercel.app/api/mcp)** · **[Make your server Countertop-friendly](#making-your-server-countertop-friendly)** · **[Contributing](CONTRIBUTING.md)**
@@ -59,6 +60,22 @@ The model turn lives in [`api/turn.mjs`](api/turn.mjs), a Vercel function. Deplo
 | `DAILY_MODEL_CAP` | Model calls per day (default 300), plus 30 per visitor per 10 minutes |
 
 Open `/?server=<url>` to connect straight to a server.
+
+### Tests
+
+```bash
+npm test               # 12 tests, no network and no model
+```
+
+| What is checked | Where |
+|---|---|
+| The host's custom fetch answers the client's optional GET stream locally (no 405 in the console) and passes POST and DELETE through | [`test/core.test.ts`](test/core.test.ts) |
+| The tool console's first guess at arguments, from a schema's `required`, `default`, `examples`, `enum`, number minimums, nullable types and "e.g." hints | [`test/core.test.ts`](test/core.test.ts) |
+| The confirm gate: only a tool annotated `readOnlyHint: true` runs without asking; a missing or non-boolean hint asks | [`test/core.test.ts`](test/core.test.ts) |
+| The real host code against an in-process stateless MCP server: tools, server name and instructions read, views detected, tool errors returned as results, and only POSTs reach the server | [`test/host.test.ts`](test/host.test.ts) |
+| The model function: Nova's `<thinking>` text removed, same-origin guard, server instructions fenced as untrusted and capped, no key means a plain tool console | [`test/turn.test.ts`](test/turn.test.ts) |
+
+CI runs the type check, the build and the tests on every push.
 
 ## Making your server Countertop-friendly
 

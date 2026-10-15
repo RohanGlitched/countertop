@@ -14,6 +14,7 @@ The tool console works without any key. For model turns, run the function locall
 ## Before you open a pull request
 
 - `npm run build` passes (it type-checks first).
+- `npm test` passes, and new host behaviour comes with a test (`test/`; the host tests run the real client against an in-process MCP server).
 - Try the end-to-end script against a deployment or `vercel dev`: `node scripts/e2e.cjs http://localhost:3000 https://lowtide-energy.vercel.app/api/mcp`.
 - Test against at least one server that ships an MCP App view and one that doesn't.
 - Keep the page working with the keyboard only, and with "Speak replies" off.

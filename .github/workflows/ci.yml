@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Type check and build
+    name: Type check, build and test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -20,5 +20,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Tests (host fetch, console prefill, confirm gate, model function guards)
+        run: npm test
       - name: The model function parses
         run: node --check api/turn.mjs
