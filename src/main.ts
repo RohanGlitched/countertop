@@ -101,6 +101,11 @@ connectForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   await open(urlInput.value.trim());
 });
+// The sample server's address is set at build time (VITE_LOWTIDE_MCP), so the AWS deployment points at Lowtide on AWS.
+const LOWTIDE_MCP = import.meta.env.VITE_LOWTIDE_MCP as string | undefined;
+document.querySelectorAll<HTMLButtonElement>("[data-url]").forEach((b) => {
+  if (LOWTIDE_MCP && /lowtide/.test(b.dataset.url ?? "")) b.dataset.url = LOWTIDE_MCP;
+});
 document.querySelectorAll<HTMLButtonElement>("[data-url]").forEach((b) =>
   b.addEventListener("click", () => {
     urlInput.value = b.dataset.url!;

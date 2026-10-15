@@ -5,12 +5,15 @@ import { createHash, createHmac } from "node:crypto";
 const sha256 = (s) => createHash("sha256").update(s, "utf8").digest("hex");
 const hmac = (key, s) => createHmac("sha256", key).update(s, "utf8").digest();
 
-export function sigv4Headers(url, body, region, keyId, secret, now = new Date()) {
+// With temporary credentials (a Lambda execution role) pass the session token: it is sent and signed as
+// x-amz-security-token.
+export function sigv4Headers(url, body, region, keyId, secret, now = new Date(), sessionToken = undefined) {
   const u = new URL(url);
   const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "");
   const day = amzDate.slice(0, 8);
   const payload = sha256(body);
   const headers = { "content-type": "application/json", host: u.host, "x-amz-content-sha256": payload, "x-amz-date": amzDate };
+  if (sessionToken) headers["x-amz-security-token"] = sessionToken;
   const names = Object.keys(headers).sort();
   // every path segment is encoded once more for the canonical request (all services except S3)
   const path = u.pathname.split("/").map((seg) => encodeURIComponent(seg)).join("/");

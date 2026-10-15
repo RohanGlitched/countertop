@@ -1,20 +1,28 @@
 // One model turn for Countertop, on Amazon Bedrock (Converse API).
 // The browser holds the conversation and runs the MCP tool calls itself; this only decides the next step.
-// Env: BEDROCK_ACCESS_KEY_ID + BEDROCK_SECRET_ACCESS_KEY (signed requests) or AWS_BEARER_TOKEN_BEDROCK (a Bedrock
-// API key), plus BEDROCK_REGION, BEDROCK_MODEL, DAILY_MODEL_CAP.
+// Env: BEDROCK_ACCESS_KEY_ID + BEDROCK_SECRET_ACCESS_KEY (signed requests), or on AWS Lambda the execution role's
+// temporary credentials from the standard AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN, or
+// AWS_BEARER_TOKEN_BEDROCK (a Bedrock API key); plus BEDROCK_REGION, BEDROCK_MODEL, DAILY_MODEL_CAP.
 import { sigv4Headers } from "./_sigv4.mjs";
 
 const REGION = process.env.BEDROCK_REGION || "ap-southeast-2";
 // Amazon Nova Micro, the cheapest Bedrock model with tool use, through the region's cross-region inference profile
 const GEO = REGION.startsWith("ap-") ? "apac" : REGION.startsWith("eu-") ? "eu" : "us";
 const MODEL = process.env.BEDROCK_MODEL || `${GEO}.amazon.nova-micro-v1:0`;
-const configured = () => Boolean((process.env.BEDROCK_ACCESS_KEY_ID && process.env.BEDROCK_SECRET_ACCESS_KEY) || process.env.AWS_BEARER_TOKEN_BEDROCK);
+/** Signing credentials: a Bedrock-only IAM user's key first (Vercel), then the standard AWS chain (a Lambda role). */
+export function credentials(env = process.env) {
+  if (env.BEDROCK_ACCESS_KEY_ID && env.BEDROCK_SECRET_ACCESS_KEY) return { id: env.BEDROCK_ACCESS_KEY_ID, secret: env.BEDROCK_SECRET_ACCESS_KEY };
+  // Vercel's runtime AWS_* variables are not ours
+  if (!env.VERCEL && env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY) return { id: env.AWS_ACCESS_KEY_ID, secret: env.AWS_SECRET_ACCESS_KEY, session: env.AWS_SESSION_TOKEN || undefined };
+  return null;
+}
+const configured = () => Boolean(credentials() || process.env.AWS_BEARER_TOKEN_BEDROCK);
 
 function converse(payload, timeout) {
   const url = `https://bedrock-runtime.${REGION}.amazonaws.com/model/${encodeURIComponent(MODEL)}/converse`;
   const body = JSON.stringify(payload);
-  const id = process.env.BEDROCK_ACCESS_KEY_ID, secret = process.env.BEDROCK_SECRET_ACCESS_KEY;
-  const headers = id && secret ? sigv4Headers(url, body, REGION, id, secret) : { authorization: `Bearer ${process.env.AWS_BEARER_TOKEN_BEDROCK}`, "content-type": "application/json" };
+  const c = credentials();
+  const headers = c ? sigv4Headers(url, body, REGION, c.id, c.secret, new Date(), c.session) : { authorization: `Bearer ${process.env.AWS_BEARER_TOKEN_BEDROCK}`, "content-type": "application/json" };
   return fetch(url, { method: "POST", headers, body, signal: AbortSignal.timeout(timeout) });
 }
 
@@ -90,7 +98,8 @@ async function reachable() {
   if (!configured()) return false;
   if (probe && Date.now() - probe.at < 5 * 60_000) return probe.ok;
   try {
-    const r = await converse({ messages: [{ role: "user", content: [{ text: "Reply with the single word ok." }] }], inferenceConfig: { maxTokens: 5 } }, 10_000);
+    const t0 = Date.now();
+  const r = await converse({ messages: [{ role: "user", content: [{ text: "Reply with the single word ok." }] }], inferenceConfig: { maxTokens: 5 } }, 10_000);
     probe = { at: Date.now(), ok: r.ok };
   } catch {
     probe = { at: Date.now(), ok: false };
@@ -132,6 +141,8 @@ export default async function handler(req, res) {
     inferenceConfig: { maxTokens: 500, temperature: 0.3 },
   }, 25_000).catch((e) => ({ ok: false, status: 504, json: async () => ({ message: String(e) }) }));
   const out = await r.json().catch(() => ({}));
+  // one JSON line per model turn (CloudWatch Logs on AWS, the function log on Vercel); never the conversation
+  process.stdout.write(JSON.stringify({ t: new Date().toISOString(), evt: "model", engine: "bedrock", model: MODEL, ms: Date.now() - t0, ok: Boolean(r.ok && out.output?.message), status: r.status, stop: out.stopReason, inputTokens: out.usage?.inputTokens, outputTokens: out.usage?.outputTokens }) + "\n");
   if (!r.ok || !out.output?.message) {
     console.error("bedrock", r.status, (out.message || out.Message || JSON.stringify(out)).slice(0, 300));
     return res.status(502).json({ error: `The model didn't answer (Bedrock said ${r.status}). The tool console still works.` });
