@@ -1,0 +1,60 @@
+<!doctype html>
+<!-- README cover for Countertop (1800x1000). Render: node docs/cover-src/render.cjs (Playwright), which writes docs/cover.png.
+     The hero is a 2x screenshot of the live AWS deployment (device@2x.png: Lowtide's get_tide view, run from the tool console). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Countertop cover</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=block" rel="stylesheet">
+<style>
+  :root { --bg: #efeeea; --surface: #f8f8f6; --ink: #16181b; --muted: #5f646b; --rule: #d9d8d2; --signal: #ff5a1f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1800px; height: 1000px; overflow: hidden; background: var(--bg); color: var(--ink);
+    font-family: "Space Grotesk", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .page { position: relative; width: 1800px; height: 1000px; }
+  .brand { position: absolute; left: 90px; top: 62px; display: flex; align-items: center; gap: 14px; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
+  .logo { width: 36px; height: 25px; border-radius: 5px; box-shadow: inset 0 0 0 4px var(--ink), inset 0 0 0 40px var(--signal); }
+  .copy { position: absolute; left: 90px; top: 150px; width: 700px; }
+  h1 { margin: 0; font-size: 92px; font-weight: 600; line-height: .96; letter-spacing: -0.035em; }
+  h1 em { font-style: normal; color: var(--signal); }
+  p.lede { margin: 36px 0 0; font-size: 27px; line-height: 1.42; color: #3a3e44; max-width: 670px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; max-width: 700px; }
+  .chip { height: 46px; padding: 0 20px; display: inline-flex; align-items: center; border-radius: 999px; font-size: 20px; font-weight: 600;
+    white-space: nowrap; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--rule); }
+  .chip.solid { background: var(--signal); color: #fff; box-shadow: none; }
+  .hero { position: absolute; right: 90px; top: 196px; width: 860px; }
+  .hero img { display: block; width: 860px; height: auto; border-radius: 30px; box-shadow: 0 50px 90px -40px rgba(22,24,27,.45), 0 18px 40px -24px rgba(22,24,27,.35); }
+  .tag { position: absolute; left: 28px; top: -19px; height: 38px; padding: 0 16px; display: inline-flex; align-items: center; gap: 9px; border-radius: 999px;
+    background: var(--ink); color: #fff; font-size: 17px; font-weight: 600; letter-spacing: .01em; }
+  .tag i { width: 9px; height: 9px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 0 4px rgba(61,220,132,.18); }
+  .url { position: absolute; left: 90px; bottom: 50px; font-size: 24px; font-weight: 500; color: var(--muted); }
+  .url b { color: var(--ink); font-weight: 600; }
+  .cap { position: absolute; right: 90px; bottom: 52px; font-size: 19px; color: var(--muted); text-align: right; }
+  .stripe { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: var(--signal); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="brand"><span class="logo"></span>Countertop</div>
+  <div class="copy">
+    <h1>Test an MCP server the way a smart display would use&nbsp;it.</h1>
+    <p class="lede">By voice, with its views on screen. Paste any Streamable HTTP server, talk to it, and watch the model pick a tool, speak the reply and draw the tool's MCP App view on a 16:10 device screen.</p>
+    <div class="chips">
+      <span class="chip solid">MCP Apps</span>
+      <span class="chip">Streamable HTTP</span>
+      <span class="chip">Amazon Nova Micro on Amazon Bedrock</span>
+      <span class="chip">Push to talk</span>
+    </div>
+  </div>
+  <div class="hero">
+    <img src="device@2x.png" alt="">
+    <span class="tag"><i></i>Live on AWS</span>
+  </div>
+  <div class="url"><b>d124pgg01fg3le.cloudfront.net</b> · open source, MIT</div>
+  <div class="cap">Lowtide's get_tide view on the device screen: today's London prices, cheapest at 14:00.</div>
+  <div class="stripe"></div>
+</div>
+</body>
+</html>

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/cover.png" alt="Countertop: test an MCP server the way a smart display would use it. Lowtide's plan_appliance view on the device screen." width="100%">
+<img src="docs/cover.png" alt="Countertop: test an MCP server the way a smart display would use it. Live on AWS: Lowtide's get_tide view on the device screen." width="100%">
 
 <br>
 
@@ -73,7 +73,7 @@ Open `/?server=<url>` to connect straight to a server.
 ### Tests
 
 ```bash
-npm test               # 16 tests, no network and no model
+npm test               # 17 tests, no network and no model
 ```
 
 | What is checked | Where |

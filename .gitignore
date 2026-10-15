@@ -6,3 +6,4 @@ dist
 .vercel
 .env*
 build/
+docs/cover-src/small-check.png
