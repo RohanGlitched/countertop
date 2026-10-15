@@ -10,6 +10,7 @@
 [![CI](https://github.com/RohanGlitched/countertop/actions/workflows/ci.yml/badge.svg)](https://github.com/RohanGlitched/countertop/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-5f646b)](LICENSE)
 
+<!-- TODO(deploy): after infra/deploy.py, point the live links at the CloudFront URL -->
 **[Open Countertop](https://countertop-mcp.vercel.app)** · **[Try it with Lowtide](https://countertop-mcp.vercel.app/?server=https://lowtide-energy.vercel.app/api/mcp)** · **[Make your server Countertop-friendly](#making-your-server-countertop-friendly)** · **[Contributing](CONTRIBUTING.md)**
 
 </div>
@@ -49,11 +50,20 @@ npm install
 npm run dev            # http://localhost:5173 (tool console works; the model needs the function below)
 ```
 
-The model turn lives in [`api/turn.mjs`](api/turn.mjs), a Vercel function. Deploy with `vercel`, and set:
+The model turn lives in [`api/turn.mjs`](api/turn.mjs), a plain Node.js function that runs on AWS Lambda or Vercel.
+
+**On AWS** (one CloudFormation stack in your region, no static keys): the site goes to a private S3 bucket behind CloudFront (origin access control), and the model function to AWS Lambda (Node.js 22, arm64) behind a Function URL under `/api/*`, through [`infra/lambda.mjs`](infra/lambda.mjs). The function signs Bedrock requests with its own execution role, which may only call `bedrock:InvokeModel` on Nova Micro and Nova Lite.
+
+```bash
+python infra/deploy.py --dry-run   # build, package, validate; no AWS calls
+python infra/deploy.py             # credentials from the usual AWS environment (boto3)
+```
+
+**On Vercel**, deploy with `vercel` and set:
 
 | Variable | |
 |---|---|
-| `BEDROCK_ACCESS_KEY_ID`, `BEDROCK_SECRET_ACCESS_KEY` | IAM credentials; requests are SigV4-signed. Give the user only `bedrock:InvokeModel` on the models you use. |
+| `BEDROCK_ACCESS_KEY_ID`, `BEDROCK_SECRET_ACCESS_KEY` | IAM credentials; requests are SigV4-signed. Give the user only `bedrock:InvokeModel` on the models you use. (On AWS Lambda leave these out: the role's temporary credentials are used, session token included.) |
 | `AWS_BEARER_TOKEN_BEDROCK` | Or a Bedrock API key, if your AWS organisation allows them. Without either, Countertop runs as a tool console. |
 | `BEDROCK_MODEL` | Default: Amazon Nova Micro through the region's inference profile (`apac.amazon.nova-micro-v1:0` in Sydney) |
 | `BEDROCK_REGION` | Default `ap-southeast-2` |
