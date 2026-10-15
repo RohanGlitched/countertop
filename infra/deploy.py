@@ -73,7 +73,11 @@ def site_files():
 
 
 def check_template():
-    import yaml
+    try:
+        import yaml
+    except ImportError:
+        print("PyYAML isn't installed: skipping the offline template check (CloudFormation still validates it)")
+        return
 
     class Loader(yaml.SafeLoader):
         pass
