@@ -113,7 +113,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ model: configured() ? MODEL : null, reachable: ok });
   }
   if (req.method !== "POST") return res.status(405).end();
-  if (!sameOrigin(req)) return res.status(403).json({ error: "This endpoint serves this Countertop deployment only. Deploy your own copy with your own Bedrock key." });
+  if (!sameOrigin(req)) return res.status(403).json({ error: "This endpoint serves this Countertop deployment's own page only. Deploy your own copy (infra/deploy.py) to use it from elsewhere." });
   if (!configured()) return res.status(503).json({ error: "No model is configured here. Use the tool console." });
   const raw = typeof req.body === "string" ? req.body : JSON.stringify(req.body || {});
   if (raw.length > MAX_BYTES) return res.status(413).json({ error: "That conversation is too long. Start again." });

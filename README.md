@@ -96,7 +96,7 @@ CI runs the type check, the build and the tests on every push.
 ## Security and privacy
 
 - Countertop runs in your browser and talks to the server you give it; nothing is stored except the last server URL in `localStorage`.
-- The model function answers requests whose Origin is its own page, caps calls per visitor (30 per 10 minutes) and per day (300 by default), both per server instance. That stops casual reuse of a public deployment's Bedrock key; it is not authentication, so a deployment with real money behind it should add its own.
+- The model function answers requests whose Origin is its own page, caps calls per visitor (30 per 10 minutes) and per day (300 by default), both per server instance (so per warm Lambda instance on AWS, not per deployment). That stops casual reuse of a public deployment's model budget (on AWS there is no key to reuse: the function signs with its role); it is not authentication, so a deployment with real money behind it should add its own.
 - A server's `instructions` are passed to the model inside the system prompt, fenced as untrusted text, which is what a real host does. A server can still steer the model, so Countertop is a test bench for servers you are building or trust. Tools that aren't marked read-only ask you in the browser before they run, whatever the model or the server say.
 - Views run in a sandboxed iframe with an opaque origin and scripts only; they cannot read the page or your other tabs.
 
@@ -110,5 +110,7 @@ CI runs the type check, the build and the tests on every push.
 ## Contributing
 
 Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks and a list of good first contributions.
+
+Upstream: building Countertop meant every browser-based host needed CORS headers that `mcp-handler` doesn't send, so Lowtide wraps its handler by hand. [vercel-labs/mcp-handler#200](https://github.com/vercel-labs/mcp-handler/pull/200) (open, not merged) adds an opt-in `cors` option to `createMcpHandler` and `withMcpAuth`, including the auth 401 and its `WWW-Authenticate` header, with 11 tests.
 
 MIT licensed.

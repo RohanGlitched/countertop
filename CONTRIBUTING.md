@@ -9,7 +9,7 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-The tool console works without any key. For model turns, run the function locally with the Vercel CLI (`vercel dev`) and set `AWS_BEARER_TOKEN_BEDROCK` in `.env.local`, or point the page at a deployment of your own.
+The tool console works without any key. For model turns, run the function locally with the Vercel CLI (`vercel dev`) with AWS credentials allowed to call `bedrock:InvokeModel` on Nova Micro (`BEDROCK_ACCESS_KEY_ID` and `BEDROCK_SECRET_ACCESS_KEY` in `.env.local`, or your usual AWS profile), or deploy your own copy to AWS with `python infra/deploy.py`, where the function signs with its own role and needs no key. A Bedrock API key (`AWS_BEARER_TOKEN_BEDROCK`) also works where your AWS organisation allows them.
 
 ## Before you open a pull request
 
