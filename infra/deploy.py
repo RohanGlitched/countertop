@@ -148,7 +148,7 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--skip-build", action="store_true")
     ap.add_argument("--lowtide-mcp", help="the sample server's MCP URL (default: the lowtide-web stack's, else Vercel)")
-    ap.add_argument("--concurrency", type=int, default=2)
+    ap.add_argument("--concurrency", type=int, default=10, help="reserved concurrency for the model function (the account allows 400; 100 must stay unreserved)")
     a = ap.parse_args()
     if a.region != REGION:
         raise SystemExit(f"the organisation allows only {REGION}")

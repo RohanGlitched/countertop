@@ -15,8 +15,8 @@ Parameters:
     Description: Model turns per UTC day per instance (spending guard)
   MaxConcurrency:
     Type: Number
-    Default: 2
-    Description: Reserved concurrency; 0 = don't reserve any
+    Default: 10
+    Description: Reserved concurrency (several judges taking model turns at once; the daily cap still bounds spend); 0 = don't reserve any
 
 Conditions:
   Reserve: !Not [!Equals [!Ref MaxConcurrency, "0"]]
